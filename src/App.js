@@ -1,21 +1,30 @@
-import React, { useReducer, useContext, useEffect } from 'react'
+import React, { useReducer, useContext, useEffect, useRef } from 'react'
+
+// CONST TYPES for Actions
+export const UPDATE = 'UPDATE'
+export const ADD = 'ADD'
+export const DELETE = 'DELETE'
+export const COMPLETED = 'COMPLETED'
 
 function appReducer(state, { type, payload }) {
   switch (type) {
-    case 'reset':
+    case UPDATE: {
       return payload
-    case 'add':
+    }
+    case ADD: {
       return [
         ...state,
         {
           id: Date.now(),
-          text: 'input Todo item',
+          text: '',
           completed: false
         }
       ]
-    case 'delete':
+    }
+    case DELETE: {
       return state.filter(item => item.id !== payload)
-    case 'completed':
+    }
+    case COMPLETED: {
       return state.map(item => {
         if (item.id === payload) {
           return {
@@ -25,20 +34,33 @@ function appReducer(state, { type, payload }) {
         }
         return item
       })
-    default:
+    }
+    default: {
       return state
+    }
   }
 }
 
 const Context = React.createContext()
 
-export default function App() {
-  const [state, dispatch] = useReducer(appReducer, [])
+function useEffectOnce(callback) {
+  const didItRun = useRef(false)
 
   useEffect(() => {
+    if (!didItRun.current) {
+      callback()
+      didItRun.current = true
+    }
+  })
+}
+
+export default function TodosApp() {
+  const [state, dispatch] = useReducer(appReducer, [])
+
+  useEffectOnce(() => {
     const raw = localStorage.getItem('data')
-    dispatch({ type: 'reset', payload: JSON.parse(raw) })
-  }, [])
+    dispatch({ type: UPDATE, payload: raw ? JSON.parse(raw) : [] })
+  })
 
   useEffect(() => {
     localStorage.setItem('data', JSON.stringify(state))
@@ -46,41 +68,39 @@ export default function App() {
 
   return (
     <Context.Provider value={dispatch}>
-      <div style={{ width: '1020px' }}>
-        <h1>TODO LIST</h1>
-        <h4>Using React Hooks & React Context API</h4>
-        <button onClick={() => dispatch({ type: 'add' })}>NEW TODO</button>
+      <div style={{ width: '400px', margin: '0 auto' }}>
+        <h1>Todos App</h1>
+        <button onClick={() => dispatch({ type: ADD })}>New Todo</button>
         <br />
         <br />
-        <TodoList items={state} />
+        <TodosList items={state} />
       </div>
     </Context.Provider>
   )
 }
 
-function TodoList({ items }) {
-  return items && items.map(item => <TodoItem id={item.id} {...item} />)
+function TodosList({ items }) {
+  return items.map(item => <TodoItem key={item.id} {...item} />)
 }
 
 function TodoItem({ id, completed, text }) {
   const dispatch = useContext(Context)
   return (
     <div
-      key={id}
       style={{
         display: 'flex',
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: 'fit-content'
+        justifyContent: 'center',
+        width: '200px'
       }}>
       <input
         type='checkbox'
         checked={completed}
-        onChange={() => dispatch({ type: 'completed', payload: id })}
+        onChange={() => dispatch({ type: COMPLETED, payload: id })}
       />
       <input type='text' defaultValue={text} />
-      <button onClick={() => dispatch({ type: 'delete', payload: id })}>
-        DELETE
+      <button onClick={() => dispatch({ type: DELETE, payload: id })}>
+        Delete
       </button>
     </div>
   )
